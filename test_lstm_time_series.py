@@ -4,13 +4,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-NUM_EPOCHS = 20
-NUM_FORECAST = 10
+NUM_EPOCHS = 50
+NUM_FORECAST = 4
 INIT_DISCARD_PERC = 0.33
 LEARNING_RATE = 1e-3
 NUM_HIDDEN_UNITS = 16
 BATCH_SIZE = 10
-SEQ_LENGTH = 30
+SEQ_LENGTH = 14
 
 
 class SequenceDataset(Dataset):
@@ -134,6 +134,21 @@ def predict(data_loader, model):
 
 def main():
     df = load_csv()
+
+    from sklearn.preprocessing import MinMaxScaler
+
+    # Fit scalers
+    scalers = {}
+    for x in df.columns:
+        scalers[x] = MinMaxScaler(feature_range=(0,1)).fit(df[x].values.reshape(-1, 1))
+
+    # Transform data via scalers
+    norm_df = df.copy()
+    for i, key in enumerate(scalers.keys()):
+        norm = scalers[key].transform(norm_df.iloc[:, i].values.reshape(-1, 1))
+        norm_df.iloc[:, i] = norm
+    
+    df = norm_df
 
     target_sensor = "Close"
     features = list(df.columns.difference([target_sensor]))
