@@ -209,6 +209,9 @@ def main():
     plt.yscale("log")
     plt.show()
 
+    for col in df_out.columns:
+        df_out[col] = scalers[target_sensor].inverse_transform(df_out[col].values.reshape(-1, 1))
+
     plt.plot(df_out.index, df_out[f"{target_sensor}_lead{NUM_FORECAST}"])
     plt.plot(df_out.index, df_out[f"{ystar_col}"])
     plt.show()
