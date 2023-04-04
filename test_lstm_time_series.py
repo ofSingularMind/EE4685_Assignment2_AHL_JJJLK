@@ -5,7 +5,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 NUM_EPOCHS = 50
-NUM_FORECAST = 4
+NUM_FORECAST = 1
 INIT_DISCARD_PERC = 0.33
 LEARNING_RATE = 1e-3
 NUM_HIDDEN_UNITS = 16
@@ -105,6 +105,7 @@ def train_model(data_loader, model, loss_function, optimizer):
 
     avg_loss = total_loss / num_batches
     print(f"Train loss: {avg_loss}")
+    return avg_loss
 
 
 def test_model(data_loader, model, loss_function):
@@ -119,6 +120,7 @@ def test_model(data_loader, model, loss_function):
 
     avg_loss = total_loss / num_batches
     print(f"Test loss: {avg_loss}")
+    return avg_loss
 
 
 def predict(data_loader, model):
@@ -140,18 +142,19 @@ def main():
     # Fit scalers
     scalers = {}
     for x in df.columns:
-        scalers[x] = MinMaxScaler(feature_range=(0,1)).fit(df[x].values.reshape(-1, 1))
+        scalers[x] = MinMaxScaler(feature_range=(0, 1)).fit(df[x].values.reshape(-1, 1))
 
     # Transform data via scalers
     norm_df = df.copy()
     for i, key in enumerate(scalers.keys()):
         norm = scalers[key].transform(norm_df.iloc[:, i].values.reshape(-1, 1))
         norm_df.iloc[:, i] = norm
-    
+
     df = norm_df
 
     target_sensor = "Close"
-    features = list(df.columns.difference([target_sensor]))
+    # features = list(df.columns.difference([target_sensor]))
+    features = list(df.columns)
 
     target = f"{target_sensor}_lead{NUM_FORECAST}"
 
@@ -162,20 +165,6 @@ def main():
 
     df_train = df.iloc[: int(len(df) * test_frac)].copy()
     df_test = df.iloc[int(len(df) * test_frac) :].copy()
-
-    target_mean = df_train[target].mean()
-    target_stdev = df_train[target].std()
-
-    for c in df_train.columns:
-        mean = df_train[c].mean()
-        stdev = df_train[c].std()
-
-        df_train[c] = (df_train[c] - mean) / stdev
-        df_test[c] = (df_test[c] - mean) / stdev
-
-    train_dataset = SequenceDataset(
-        df_train, target=target, features=features, sequence_length=SEQ_LENGTH
-    )
 
     train_dataset = SequenceDataset(
         df_train, target=target, features=features, sequence_length=SEQ_LENGTH
@@ -195,10 +184,15 @@ def main():
     test_model(test_loader, model, loss_function)
     print()
 
+    train_losses = []
+    test_losses = []
+
     for ix_epoch in range(NUM_EPOCHS):
         print(f"Epoch {ix_epoch}\n---------")
-        train_model(train_loader, model, loss_function, optimizer=optimizer)
-        test_model(test_loader, model, loss_function)
+        train_loss = train_model(train_loader, model, loss_function, optimizer=optimizer)
+        train_losses.append(train_loss)
+        test_loss = test_model(test_loader, model, loss_function)
+        test_losses.append(test_loss)
         print()
 
     train_eval_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False)
@@ -209,10 +203,11 @@ def main():
 
     df_out = pd.concat((df_train, df_test))[[target, ystar_col]]
 
-    for c in df_out.columns:
-        df_out[c] = df_out[c] * target_stdev + target_mean
 
-    print(df_out)
+    plt.plot(train_losses, label="train")
+    plt.plot(test_losses, label="test")
+    plt.yscale("log")
+    plt.show()
 
     plt.plot(df_out.index, df_out[f"{target_sensor}_lead{NUM_FORECAST}"])
     plt.plot(df_out.index, df_out[f"{ystar_col}"])
