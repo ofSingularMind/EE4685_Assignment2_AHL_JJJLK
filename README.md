@@ -1,6 +1,10 @@
-# EE4685 - Assignment 2 - Bitcoin Price Prediction
+# Delft University of Technology - EE4685 - Assignment 2 - Bitcoin Price Prediction
 
-In Assignment 2, you are asked to develop machine learning algorithms for a specific task, e.g., prediction of Bitcoin prices, and critically assess those algorithms from various perspectives.
+Hi and welcome to our code repository for our project to forecast BitCoin prices. Hope you enjoy!
+
+There are three IPYNB's to look at covering Classical Machine Learning Models, Hidden Markov Models, and Long Short-Term Memory.
+
+Project guidelines were as follows:
 
 ## Specifications
 
